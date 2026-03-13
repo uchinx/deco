@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/uchin/deco/analyzer"
+	"github.com/uchinx/deco/analyzer"
 )
 
 func main() {

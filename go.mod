@@ -1,4 +1,4 @@
-module github.com/uchin/deco
+module github.com/uchinx/deco
 
 go 1.25.2
 
