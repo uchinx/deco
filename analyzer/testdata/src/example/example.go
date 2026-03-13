@@ -17,6 +17,15 @@ func (m *MyStruct) UnusedMethod() int {
 	return 42
 }
 
+// SuppressedAbove should NOT be reported due to nolint directive above.
+//nolint:unused
+func (m *MyStruct) SuppressedAbove() int {
+	return 0
+}
+
+// SuppressedInline should NOT be reported due to inline nolint directive.
+func (m *MyStruct) SuppressedInline() int { return 0 } //nolint:unused
+
 // String satisfies fmt.Stringer, should NOT be reported.
 func (m *MyStruct) String() string {
 	return fmt.Sprintf("MyStruct{%s}", m.Name)
@@ -31,6 +40,7 @@ func (m *MyStruct) Error() string {
 type MyInterface interface {
 	DoSomething() error
 	NeverCalled() string
+	SuppressedIfaceMethod() bool //nolint:unused
 }
 
 // implStruct implements MyInterface.
@@ -42,6 +52,10 @@ func (i *implStruct) DoSomething() error {
 
 func (i *implStruct) NeverCalled() string {
 	return "never"
+}
+
+func (i *implStruct) SuppressedIfaceMethod() bool {
+	return false
 }
 
 // unexportedMethod should NOT be reported (not exported).

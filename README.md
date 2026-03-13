@@ -5,13 +5,13 @@ A CLI tool that finds dead code in Go projects. It reports exported struct metho
 ## Install
 
 ```
-go install github.com/uchin/deco/cmd/deco@latest
+go install github.com/uchinx/deco/cmd/deco@latest
 ```
 
 Or build from source:
 
 ```
-git clone https://github.com/uchin/deco.git
+git clone https://github.com/uchinx/deco.git
 cd deco
 go build ./cmd/deco
 ```
@@ -57,7 +57,7 @@ deco uses `golang.org/x/tools/go/packages` with full type checking to:
 - Unexported methods and methods on unexported types
 - `main()` and `init()` functions
 - Methods satisfying common stdlib interfaces: `error`, `fmt.Stringer`, `json.Marshaler`, `json.Unmarshaler`
-- Test file declarations (but test file *calls* count as usage)
+- Test file declarations (but test file _calls_ count as usage)
 
 ## License
 

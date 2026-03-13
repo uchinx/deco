@@ -43,11 +43,13 @@ func TestAnalyze(t *testing.T) {
 		Name     string
 	}
 	expectedMethods := map[methodKey]string{
-		{"MyStruct", "AnotherUnused"}:      "struct_method",
-		{"MyInterface", "NeverCalled"}:      "interface_method",
-		{"*MyStruct", "UnusedMethod"}:       "struct_method",
-		{"OrderProcessor", "ProcessBulk"}:   "interface_method",
-		{"*RealProcessor", "ProcessBulk"}:   "struct_method",
+		{"MyStruct", "AnotherUnused"}:              "struct_method",
+		{"MyInterface", "NeverCalled"}:              "interface_method",
+		{"*implStruct", "NeverCalled"}:              "struct_method",
+		{"*MyStruct", "UnusedMethod"}:               "struct_method",
+		{"OrderProcessor", "ProcessBulk"}:           "interface_method",
+		{"*RealProcessor", "ProcessBulk"}:           "struct_method",
+		{"*implStruct", "SuppressedIfaceMethod"}:    "struct_method",
 	}
 
 	if len(result.UnusedMethods) != len(expectedMethods) {

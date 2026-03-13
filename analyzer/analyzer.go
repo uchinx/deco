@@ -118,7 +118,7 @@ func collectDeclarations(pkgs []*packages.Package) map[*types.Func]MethodInfo {
 			ast.Inspect(file, func(n ast.Node) bool {
 				switch decl := n.(type) {
 				case *ast.FuncDecl:
-					collectFuncDecl(pkg, decl, declared)
+					collectFuncDecl(pkg, file, decl, declared)
 				case *ast.GenDecl:
 					if decl.Tok == token.TYPE {
 						for _, spec := range decl.Specs {
@@ -130,7 +130,7 @@ func collectDeclarations(pkgs []*packages.Package) map[*types.Func]MethodInfo {
 							if !ok {
 								continue
 							}
-							collectInterfaceMethods(pkg, ts, iface, declared)
+							collectInterfaceMethods(pkg, file, ts, iface, declared)
 						}
 					}
 				}
@@ -142,7 +142,7 @@ func collectDeclarations(pkgs []*packages.Package) map[*types.Func]MethodInfo {
 	return declared
 }
 
-func collectFuncDecl(pkg *packages.Package, decl *ast.FuncDecl, declared map[*types.Func]MethodInfo) {
+func collectFuncDecl(pkg *packages.Package, file *ast.File, decl *ast.FuncDecl, declared map[*types.Func]MethodInfo) {
 	if decl.Recv == nil || len(decl.Recv.List) == 0 {
 		return
 	}
@@ -151,6 +151,11 @@ func collectFuncDecl(pkg *packages.Package, decl *ast.FuncDecl, declared map[*ty
 	}
 	name := decl.Name.Name
 	if name == "init" || name == "main" {
+		return
+	}
+
+	// Check for //nolint:unused in doc comments above or inline.
+	if hasNolintDirective(decl.Doc) || hasNolintInLine(pkg, file, decl.Pos()) {
 		return
 	}
 
@@ -167,11 +172,6 @@ func collectFuncDecl(pkg *packages.Package, decl *ast.FuncDecl, declared map[*ty
 		return
 	}
 
-	// Skip methods on unexported types.
-	if !receiverTypeExported(decl.Recv.List[0].Type) {
-		return
-	}
-
 	recvType := exprToString(decl.Recv.List[0].Type)
 	pos := pkg.Fset.Position(decl.Name.Pos())
 
@@ -184,7 +184,7 @@ func collectFuncDecl(pkg *packages.Package, decl *ast.FuncDecl, declared map[*ty
 	}
 }
 
-func collectInterfaceMethods(pkg *packages.Package, ts *ast.TypeSpec, iface *ast.InterfaceType, declared map[*types.Func]MethodInfo) {
+func collectInterfaceMethods(pkg *packages.Package, file *ast.File, ts *ast.TypeSpec, iface *ast.InterfaceType, declared map[*types.Func]MethodInfo) {
 	if !ts.Name.IsExported() {
 		return
 	}
@@ -205,6 +205,9 @@ func collectInterfaceMethods(pkg *packages.Package, ts *ast.TypeSpec, iface *ast
 			continue
 		}
 		if isStdlibInterfaceMethod(method) {
+			continue
+		}
+		if hasNolintInLine(pkg, file, method.Pos()) {
 			continue
 		}
 
@@ -429,20 +432,38 @@ func isStdlibInterfaceMethod(fn *types.Func) bool {
 	return false
 }
 
-// receiverTypeExported returns true if the base type name of the receiver is exported.
-func receiverTypeExported(expr ast.Expr) bool {
-	switch e := expr.(type) {
-	case *ast.Ident:
-		return e.IsExported()
-	case *ast.StarExpr:
-		return receiverTypeExported(e.X)
-	case *ast.IndexExpr:
-		return receiverTypeExported(e.X)
-	case *ast.IndexListExpr:
-		return receiverTypeExported(e.X)
-	default:
-		return true
+const nolintDirective = "nolint:unused"
+
+// hasNolintDirective checks if a comment group contains //nolint:unused.
+func hasNolintDirective(doc *ast.CommentGroup) bool {
+	if doc == nil {
+		return false
 	}
+	for _, comment := range doc.List {
+		if containsNolint(comment.Text) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasNolintInLine checks if there is a //nolint:unused comment on the same line
+// as the given position, or on the line immediately above it.
+func hasNolintInLine(pkg *packages.Package, file *ast.File, pos token.Pos) bool {
+	targetLine := pkg.Fset.Position(pos).Line
+	for _, cg := range file.Comments {
+		for _, comment := range cg.List {
+			commentLine := pkg.Fset.Position(comment.Pos()).Line
+			if (commentLine == targetLine || commentLine == targetLine-1) && containsNolint(comment.Text) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func containsNolint(text string) bool {
+	return strings.Contains(text, nolintDirective)
 }
 
 func exprToString(expr ast.Expr) string {
