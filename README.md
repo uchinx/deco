@@ -59,6 +59,35 @@ deco uses `golang.org/x/tools/go/packages` with full type checking to:
 - Methods satisfying common stdlib interfaces: `error`, `fmt.Stringer`, `json.Marshaler`, `json.Unmarshaler`
 - Test file declarations (but test file _calls_ count as usage)
 
+## Comparison with other tools
+
+| Feature | deco | staticcheck (U1000) | golang.org/x/tools/cmd/deadcode |
+|---|---|---|---|
+| Detects unused struct methods | Yes | Yes | Yes |
+| Detects unused interface methods | Yes | No | No |
+| Cross-references interface/concrete implementations | Yes | No | No |
+| Ignores mock usage in test files | Yes | No | N/A |
+| `//nolint:unused` directive support | Yes | No (uses own directives) | No |
+| Reports unexported type methods | Yes | Yes | Yes |
+| Whole-program analysis | Module-level | Package-level | Module-level |
+| Stdlib interface detection (`error`, `Stringer`, etc.) | Yes | Yes | Yes |
+
+### Key differences
+
+**vs staticcheck (U1000)**
+
+staticcheck reports unused code at the package level. It catches unexported functions, types, and methods, but does not analyze whether an _interface method_ is unused across the module. If a method is declared in an interface, staticcheck considers it "used" by the interface definition itself. deco treats interface methods as unused if no code ever calls them.
+
+**vs deadcode (`golang.org/x/tools/cmd/deadcode`)**
+
+deadcode focuses on unreachable functions using call graph analysis (starting from `main`). It does not analyze interface method declarations — it only tracks concrete function reachability. deco specifically targets the gap: exported methods (on both structs and interfaces) that are declared but never invoked anywhere in the module.
+
+**When to use deco**
+
+- You have large interfaces and want to find methods that no one calls
+- You want to clean up concrete methods left behind after removing interface methods
+- You want mock-aware analysis that won't count test mock usage as "real" usage
+
 ## License
 
 MIT
